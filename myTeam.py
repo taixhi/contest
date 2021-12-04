@@ -10,6 +10,7 @@
 # Student side autograding was added by Brad Miller, Nick Hay, and
 # Pieter Abbeel (pabbeel@cs.berkeley.edu).
 
+#TODO: bait sum fools with the defender
 
 from captureAgents import CaptureAgent
 import random, time, util, sys
@@ -117,16 +118,22 @@ class MultiAgentSearchAgent(CaptureAgent):
     weights = self.getWeights(gameState)
     return features * weights
 
-  def getDistToOurNearestFood(self, gameState):
+  def getDistToHome(self, gameState):
     ourPos = gameState.getAgentState(self.index).getPosition()
-    closestDist = 69000000420
+    '''
+    closestDist = 6969696969420
     for food in self.ourInitialFoodList:
-      print food
+      #print food
       dist = self.getMazeDistance(ourPos, food)
       if dist < closestDist:
         closestDist = dist
+        print food
+    #print closestDist
     return closestDist
-
+    '''
+    homePos = gameState.getInitialAgentPosition(self.index)
+    delta = self.getMazeDistance(ourPos, homePos)
+    return delta
   def getFeatures(self, gameState):
     """
     Returns a counter of features for the state
@@ -154,7 +161,7 @@ class AlphaBetaAgent(MultiAgentSearchAgent):
   """
   def chooseAction(self, gameState):
     action = self.minimax(gameState,self.index,0, -10000, 10000)[1]
-    print gameState.getAgentState(self.index).getPosition()
+    #print gameState.getAgentState(self.index).getPosition()
     return action
   def minimax(self, gameState, agentIndex, currentDepth, alpha, beta):
       # Function returns a tuple with proper action and value computed by the function
@@ -165,20 +172,23 @@ class AlphaBetaAgent(MultiAgentSearchAgent):
       ]
 
       if(currentDepth == self.depth * gameState.getNumAgents()):
+          #print gameState.getAgentState(self.index).getPosition()
           return (self.evaluate(gameState),"")
       if(agentIndex==self.index): #maximizing option
           value = (-100000, "MAX_DEFAULT")
           for a in gameState.getLegalActions(agentIndex):
+              # print a
               mm = self.minimax(gameState.generateSuccessor(agentIndex,a),self.getNextAgent(gameState, agentIndex),currentDepth+1, alpha, beta)
               if mm[0] > value[0]:
                   value = (mm[0],a)
-              # alpha = max(alpha, value[0])
-              # if beta < alpha: # prune
-              #     break
+              alpha = max(alpha, value[0])
+              if beta < alpha: # prune
+                  break
+              # print "maximizing action " + str(value[1])
           return value
       elif agentIndex in visibleEnemyIndicies:
-        # print "MIN"
         value = (100000, "MIN_DEFAULT")
+        # print "miniimizing"
         if agentIndex == gameState.getNumAgents() - 1:
             newAgentIndex = 0
         else:
@@ -187,9 +197,9 @@ class AlphaBetaAgent(MultiAgentSearchAgent):
             mm = self.minimax(gameState.generateSuccessor(agentIndex,a),self.getNextAgent(gameState, agentIndex),currentDepth+1, alpha, beta)
             if mm[0] < value[0]:
                 value = (mm[0],a)
-            # beta = min(beta, value[0])
-            # if beta < alpha: # prune
-            #     break
+            beta = min(beta, value[0])
+            if beta < alpha: # prune
+                break
         return value
       else:
         return self.minimax(gameState,self.getNextAgent(gameState, agentIndex),currentDepth + 1, alpha, beta)
@@ -286,7 +296,7 @@ class AttackDanica(AlphaBetaAgent):
   def getFeatures(self, gameState):
     features = util.Counter()
     foodList = self.getFood(gameState).asList()    
-    features['successorScore'] = -len(foodList)#self.getScore(successor)
+    features['successorScore'] = len(foodList) #self.getScore(gameState)
 
     # Compute distance to the nearest food
     myPos = gameState.getAgentState(self.index).getPosition()
@@ -302,12 +312,11 @@ class AttackDanica(AlphaBetaAgent):
     dists = None
     if len(defenders) > 0:
       dists = [self.getMazeDistance(myPos, a.getPosition()) for a in defenders]
-      features['defenderDistance'] = min(dists)
+      #features['defenderDistance'] = min(dists)
 
     food = gameState.getAgentState(self.index).numCarrying
-    print food
-    if food > 3:
-      features['homeDistance'] =  self.getDistToOurNearestFood(gameState)
+    if food >= 4:
+      features['homeDistance'] =  100.0/(0.0001+self.getDistToHome(gameState))
     else:
       features['homeDistance'] =  0
     features['shoot'] = 1.0/(self.getMazeDistance(myPos, (1.0, 9.0))+0.0001)
@@ -317,7 +326,8 @@ class AttackDanica(AlphaBetaAgent):
     #TODO: may be checking one step too early ... one space away from target space
     #TODO: weightings or something are weird ... the bot acts stupid
     #return {'shoot': 1100}
-    return {'successorScore': 1000, 'distanceToFood': 10, 'defenderDistance': 100, 'homeDistance': -200}
+    #return {'successorScore': -10, 'distanceToFood': 10, 'defenderDistance': 100, 'homeDistance': 50}
+    return {'successorScore': 0, 'distanceToFood': 10, 'homeDistance': 50}
 
 class ReflexCaptureAgent(CaptureAgent):
   """
