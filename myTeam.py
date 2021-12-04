@@ -26,7 +26,7 @@ jointInference = None
 # Team creation #
 #################
 def createTeam(firstIndex, secondIndex, isRed,
-               first = 'DefenceTaichi', second = 'AttackDanica'):
+               first = 'AttackDanica', second = 'DefenceTaichi'):
   """
   This function should return a list of two agents that will form the
   team, initialized using firstIndex and secondIndex as their agent
@@ -165,11 +165,11 @@ class AlphaBetaAgent(MultiAgentSearchAgent):
       ]
 
       if(currentDepth == self.depth * gameState.getNumAgents()):
-          return (self.evaluate(gameState),action)
+          return (self.evaluate(gameState),"")
       if(agentIndex==self.index): #maximizing option
           value = (-100000, "MAX_DEFAULT")
           for a in gameState.getLegalActions(agentIndex):
-              mm = self.minimax(gameState.generateSuccessor(agentIndex,a),1,currentDepth+1, alpha, beta)
+              mm = self.minimax(gameState.generateSuccessor(agentIndex,a),self.getNextAgent(gameState, agentIndex),currentDepth+1, alpha, beta)
               if mm[0] > value[0]:
                   value = (mm[0],a)
               # alpha = max(alpha, value[0])
@@ -184,7 +184,7 @@ class AlphaBetaAgent(MultiAgentSearchAgent):
         else:
             newAgentIndex = agentIndex + 1
         for a in gameState.getLegalActions(agentIndex): # recurse to find minimum
-            mm = self.minimax(gameState.generateSuccessor(agentIndex,a),newAgentIndex,currentDepth+1, alpha, beta)
+            mm = self.minimax(gameState.generateSuccessor(agentIndex,a),self.getNextAgent(gameState, agentIndex),currentDepth+1, alpha, beta)
             if mm[0] < value[0]:
                 value = (mm[0],a)
             # beta = min(beta, value[0])
@@ -305,6 +305,7 @@ class AttackDanica(AlphaBetaAgent):
       features['defenderDistance'] = min(dists)
 
     food = gameState.getAgentState(self.index).numCarrying
+    print food
     if food > 3:
       features['homeDistance'] =  self.getDistToOurNearestFood(gameState)
     else:
@@ -313,8 +314,10 @@ class AttackDanica(AlphaBetaAgent):
     return features
 
   def getWeights(self, gameState):
-    return {'shoot': 1100}
-    # return {'successorScore': 1000, 'distanceToFood': 10, 'defenderDistance': 100, 'homeDistance': -100000}
+    #TODO: may be checking one step too early ... one space away from target space
+    #TODO: weightings or something are weird ... the bot acts stupid
+    #return {'shoot': 1100}
+    return {'successorScore': 1000, 'distanceToFood': 10, 'defenderDistance': 100, 'homeDistance': -200}
 
 class ReflexCaptureAgent(CaptureAgent):
   """
