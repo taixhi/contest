@@ -1,4 +1,3 @@
-# myTeam.py
 # ---------
 # Licensing Information:  You are free to use or extend these projects for
 # educational purposes provided that (1) you do not distribute or publish
@@ -27,7 +26,7 @@ jointInference = None
 # Team creation #
 #################
 def createTeam(firstIndex, secondIndex, isRed,
-               first = 'AttackRyan', second = 'DefenceTaichi'):
+               first = 'DefenceTaichi', second = 'AttackDanica'):
   """
   This function should return a list of two agents that will form the
   team, initialized using firstIndex and secondIndex as their agent
@@ -44,24 +43,24 @@ def createTeam(firstIndex, secondIndex, isRed,
   """
 
   # The following line is an example only; feel free to change it.
-  jointInference = JointParticleFilter()
+  jointInference = JointParticleFilter
+
   return [eval(first)(firstIndex), eval(second)(secondIndex)]
 
 ##########
 # Agents #
 ##########
-
-class ExpectiMaxAgent(CaptureAgent):
-  """
-  A base class for reflex agents that chooses score-maximizing actions
-  """
- 
+class MultiAgentSearchAgent(CaptureAgent):
+  
   def registerInitialState(self, gameState):
     self.start = gameState.getAgentPosition(self.index)
     CaptureAgent.registerInitialState(self, gameState)
+
     self.depth = 2
+    self.ourInitialFoodList = self.getFoodYouAreDefending(gameState).asList()
     self.count = 0
     # jointInference.initialize(gameState, )
+
   def chooseAction(self, gameState):
     """
       Returns the expectimax action using self.depth and self.evaluationFunction
@@ -69,10 +68,7 @@ class ExpectiMaxAgent(CaptureAgent):
       All ghosts should be modeled as choosing uniformly at random from their
       legal moves.
     """
-    score = self.expectimax(gameState,self.index,0, -10000, 10000)[1]
-    print "ran expectimax " + str(self.count) + "times"
-    self.count = 0
-    return score
+    return None
     # """
     # Picks among the actions with the highest Q(s,a).
     # """
@@ -112,6 +108,7 @@ class ExpectiMaxAgent(CaptureAgent):
       return successor.generateSuccessor(self.index, action)
     else:
       return successor
+
   def evaluate(self, gameState):
     """
     Computes a linear combination of features and feature weights
@@ -119,6 +116,16 @@ class ExpectiMaxAgent(CaptureAgent):
     features = self.getFeatures(gameState)
     weights = self.getWeights(gameState)
     return features * weights
+
+  def getDistToOurNearestFood(self, gameState):
+    ourPos = gameState.getAgentState(self.index).getPosition()
+    closestDist = 69000000420
+    for food in self.ourInitialFoodList:
+      print food
+      dist = self.getMazeDistance(ourPos, food)
+      if dist < closestDist:
+        closestDist = dist
+    return closestDist
 
   def getFeatures(self, gameState):
     """
@@ -134,13 +141,67 @@ class ExpectiMaxAgent(CaptureAgent):
     a counter or a dictionary.
     """
     return {'successorScore': 1.0}
+
   def getNextAgent(self, gameState, agentIndex):
     if agentIndex == gameState.getNumAgents() - 1:
         newAgentIndex = 0
     else:
         newAgentIndex = agentIndex + 1
     return newAgentIndex
+class AlphaBetaAgent(MultiAgentSearchAgent):
+  """
+    Your minimax agent (question 2)
+  """
+  def chooseAction(self, gameState):
+    action = self.minimax(gameState,self.index,0,"", -10000, 10000)[1]
+    print gameState.getAgentState(self.index).getPosition()
+    return action
+  def minimax(self, gameState, agentIndex, currentDepth, action, alpha, beta):
+      # Function returns a tuple with proper action and value computed by the function
+      # base case
+      enemies = [(i, gameState.getAgentState(i)) for i in self.getOpponents(gameState)]
+      temp = [a for a in enemies if a[1].getPosition() != None]
+      visibleEnemyIndicies = [a[0] for a in temp if self.getMazeDistance(gameState.getAgentState(self.index).getPosition(), a[1].getPosition()) < 6
+      ]
 
+      if(currentDepth == self.depth * gameState.getNumAgents()):
+          return (self.evaluate(gameState),action)
+      if(agentIndex==self.index): #maximizing option
+          value = (-100000, "MAX_DEFAULT")
+          for a in gameState.getLegalActions(agentIndex):
+              mm = self.minimax(gameState.generateSuccessor(agentIndex,a),1,currentDepth+1,a, alpha, beta)
+              if mm[0] > value[0]:
+                  value = (mm[0],a)
+              alpha = max(alpha, value[0])
+              if beta < alpha: # prune
+                  break
+          return value
+      elif agentIndex in visibleEnemyIndicies:
+        # print "MIN"
+        value = (100000, "MIN_DEFAULT")
+        if agentIndex == gameState.getNumAgents() - 1:
+            newAgentIndex = 0
+        else:
+            newAgentIndex = agentIndex + 1
+        for a in gameState.getLegalActions(agentIndex): # recurse to find minimum
+            mm = self.minimax(gameState.generateSuccessor(agentIndex,a),newAgentIndex,currentDepth+1,a, alpha, beta)
+            if mm[0] < value[0]:
+                value = (mm[0],a)
+            beta = min(beta, value[0])
+            if beta < alpha: # prune
+                break
+        return value
+      else:
+        return self.minimax(gameState,self.getNextAgent(gameState, agentIndex),currentDepth + 1, "None", alpha, beta)
+class ExpectiMaxAgent(MultiAgentSearchAgent):
+  """
+  A base class for reflex agents that chooses score-maximizing actions
+  """
+  def chooseAction(self, gameState):
+    action = self.expectimax(gameState,self.index,0, -10000, 10000)[1]
+    print "ran expectimax " + str(self.count) + "times"
+    self.count = 0
+    return action
   def expectimax(self, gameState, agentIndex, currentDepth, alpha, beta):
       self.count += 1
       # Function returns a tuple with proper action and value computed by the function
@@ -148,7 +209,7 @@ class ExpectiMaxAgent(CaptureAgent):
       enemies = [(i, gameState.getAgentState(i)) for i in self.getOpponents(gameState)]
       temp = [a for a in enemies if a[1].getPosition() != None]
       visibleEnemyIndicies = [a[0] for a in temp if self.getMazeDistance(gameState.getAgentState(self.index).getPosition(), a[1].getPosition()) < 6
-]
+      ]
       if(currentDepth == self.depth * gameState.getNumAgents() or len(gameState.getLegalActions(self.index)) == 0):
           return (self.evaluate(gameState),"")
       if(agentIndex==self.index): # max
@@ -215,6 +276,45 @@ class AttackRyan(ExpectiMaxAgent):
 
   def getWeights(self, gameState):
     return {'successorScore': 1000, 'distanceToFood': 10, 'defenderDistance': 100}
+
+class AttackDanica(AlphaBetaAgent):
+  """
+  A reflex agent that seeks food. This is an agent
+  we give you to get an idea of what an offensive agent might look like,
+  but it is by no means the best or only way to build an offensive agent.
+  """
+  def getFeatures(self, gameState):
+    features = util.Counter()
+    foodList = self.getFood(gameState).asList()    
+    features['successorScore'] = -len(foodList)#self.getScore(successor)
+
+    # Compute distance to the nearest food
+    myPos = gameState.getAgentState(self.index).getPosition()
+    if len(foodList) > 0: # This should always be True,  but better safe than sorry
+      minDistance = min([self.getMazeDistance(myPos, food) for food in foodList])
+      features['distanceToFood'] = 1.0/minDistance
+
+    # Computes distance to invaders we can see
+    observation = self.getCurrentObservation()
+
+    enemies = [gameState.getAgentState(i) for i in self.getOpponents(gameState)]
+    defenders = [a for a in enemies if not a.isPacman and a.getPosition() != None]
+    dists = None
+    if len(defenders) > 0:
+      dists = [self.getMazeDistance(myPos, a.getPosition()) for a in defenders]
+      features['defenderDistance'] = min(dists)
+
+    food = gameState.getAgentState(self.index).numCarrying
+    if food > 3:
+      features['homeDistance'] =  self.getDistToOurNearestFood(gameState)
+    else:
+      features['homeDistance'] =  0
+    features['shoot'] = 1.0/(self.getMazeDistance(myPos, (1.0, 9.0))+0.0001)
+    return features
+
+  def getWeights(self, gameState):
+    return {'shoot': 1100}
+    # return {'successorScore': 1000, 'distanceToFood': 10, 'defenderDistance': 100, 'homeDistance': -100000}
 
 class ReflexCaptureAgent(CaptureAgent):
   """
