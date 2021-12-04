@@ -153,10 +153,10 @@ class AlphaBetaAgent(MultiAgentSearchAgent):
     Your minimax agent (question 2)
   """
   def chooseAction(self, gameState):
-    action = self.minimax(gameState,self.index,0,"", -10000, 10000)[1]
+    action = self.minimax(gameState,self.index,0, -10000, 10000)[1]
     print gameState.getAgentState(self.index).getPosition()
     return action
-  def minimax(self, gameState, agentIndex, currentDepth, action, alpha, beta):
+  def minimax(self, gameState, agentIndex, currentDepth, alpha, beta):
       # Function returns a tuple with proper action and value computed by the function
       # base case
       enemies = [(i, gameState.getAgentState(i)) for i in self.getOpponents(gameState)]
@@ -169,12 +169,12 @@ class AlphaBetaAgent(MultiAgentSearchAgent):
       if(agentIndex==self.index): #maximizing option
           value = (-100000, "MAX_DEFAULT")
           for a in gameState.getLegalActions(agentIndex):
-              mm = self.minimax(gameState.generateSuccessor(agentIndex,a),1,currentDepth+1,a, alpha, beta)
+              mm = self.minimax(gameState.generateSuccessor(agentIndex,a),1,currentDepth+1, alpha, beta)
               if mm[0] > value[0]:
                   value = (mm[0],a)
-              alpha = max(alpha, value[0])
-              if beta < alpha: # prune
-                  break
+              # alpha = max(alpha, value[0])
+              # if beta < alpha: # prune
+              #     break
           return value
       elif agentIndex in visibleEnemyIndicies:
         # print "MIN"
@@ -184,15 +184,15 @@ class AlphaBetaAgent(MultiAgentSearchAgent):
         else:
             newAgentIndex = agentIndex + 1
         for a in gameState.getLegalActions(agentIndex): # recurse to find minimum
-            mm = self.minimax(gameState.generateSuccessor(agentIndex,a),newAgentIndex,currentDepth+1,a, alpha, beta)
+            mm = self.minimax(gameState.generateSuccessor(agentIndex,a),newAgentIndex,currentDepth+1, alpha, beta)
             if mm[0] < value[0]:
                 value = (mm[0],a)
-            beta = min(beta, value[0])
-            if beta < alpha: # prune
-                break
+            # beta = min(beta, value[0])
+            # if beta < alpha: # prune
+            #     break
         return value
       else:
-        return self.minimax(gameState,self.getNextAgent(gameState, agentIndex),currentDepth + 1, "None", alpha, beta)
+        return self.minimax(gameState,self.getNextAgent(gameState, agentIndex),currentDepth + 1, alpha, beta)
 class ExpectiMaxAgent(MultiAgentSearchAgent):
   """
   A base class for reflex agents that chooses score-maximizing actions
