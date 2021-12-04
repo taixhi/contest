@@ -178,7 +178,7 @@ class AlphaBetaAgent(MultiAgentSearchAgent):
           value = (-100000, "MAX_DEFAULT")
           for a in gameState.getLegalActions(agentIndex):
               # print a
-              mm = self.minimax(gameState.generateSuccessor(agentIndex,a),self.getNextAgent(gameState, agentIndex),currentDepth+1, alpha, beta)
+              mm = self.minimax(self.getSuccessor(gameState,a),self.getNextAgent(gameState, agentIndex),currentDepth+1, alpha, beta)
               if mm[0] > value[0]:
                   value = (mm[0],a)
               alpha = max(alpha, value[0])
@@ -326,8 +326,7 @@ class AttackDanica(AlphaBetaAgent):
     #TODO: may be checking one step too early ... one space away from target space
     #TODO: weightings or something are weird ... the bot acts stupid
     #return {'shoot': 1100}
-    #return {'successorScore': -10, 'distanceToFood': 10, 'defenderDistance': 100, 'homeDistance': 50}
-    return {'successorScore': 0, 'distanceToFood': 10, 'homeDistance': 50}
+    return {'successorScore': -10, 'distanceToFood': 10, 'defenderDistance': 100, 'homeDistance': 50}
 
 class ReflexCaptureAgent(CaptureAgent):
   """
