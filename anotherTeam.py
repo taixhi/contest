@@ -27,7 +27,7 @@ jointInference = None
 # Team creation #
 #################
 def createTeam(firstIndex, secondIndex, isRed,
-               first = 'AttackDanica', second = 'DefenceTaichi'):
+               first = 'AttackRyan', second = 'DefenceTaichi'):
   """
   This function should return a list of two agents that will form the
   team, initialized using firstIndex and secondIndex as their agent
@@ -296,8 +296,7 @@ class AttackDanica(AlphaBetaAgent):
   def getFeatures(self, gameState):
     features = util.Counter()
     foodList = self.getFood(gameState).asList()    
-    features['successorScore'] = len(foodList)
-    features['score'] = self.getScore(gameState)
+    features['successorScore'] = len(foodList) #self.getScore(gameState)
 
     # Compute distance to the nearest food
     myPos = gameState.getAgentState(self.index).getPosition()
@@ -341,7 +340,7 @@ class AttackDanica(AlphaBetaAgent):
     return features
 
   def getWeights(self, gameState):
-      return {'successorScore': -10, 'distanceToFood': 10, 'defenderDistance': 100, 'scaredDefenderDistance': 10, 'homeDistance': 5000, 'scared': 10, 'score': 10}
+      return {'successorScore': -10, 'distanceToFood': 10, 'defenderDistance': 100, 'scaredDefenderDistance': 100, 'homeDistance': 500, 'scared': 10}
     #TODO: may be checking one step too early ... one space away from target space
     #TODO: weightings or something are weird ... the bot acts stupid
     #return {'shoot': 1100}
