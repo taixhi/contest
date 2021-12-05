@@ -271,11 +271,10 @@ class AlphaBetaAgent(MultiAgentSearchAgent):
       visibleEnemyIndicies = [a[0] for a in temp if self.getMazeDistance(gameState.getAgentState(self.index).getPosition(), a[1].getPosition()) < 6
       ]
       if(currentDepth == self.depth * gameState.getNumAgents()):
-          print self.evaluate(gameState, prevGameState), gameState.getAgentState(self.index).getPosition()
+          # print self.evaluate(gameState, prevGameState), gameState.getAgentState(self.index).getPosition()
           return (self.evaluate(gameState, prevGameState),"")
       if(agentIndex==self.index): #maximizing option
           value = (-100000, "MAX_DEFAULT")
-          print "max"
           for a in gameState.getLegalActions(agentIndex):
                 mm = self.minimax(self.getSuccessor(gameState,a),self.getNextAgent(gameState, agentIndex),currentDepth+1, alpha, beta, gameState)
                 if mm[0] > value[0]:
@@ -307,7 +306,7 @@ class ExpectiMaxAgent(MultiAgentSearchAgent):
   """
   def chooseAction(self, gameState):
     action = self.expectimax(gameState,self.index,0, -10000, 10000)[1]
-    print "ran expectimax " + str(self.count) + "times"
+    # print "ran expectimax " + str(self.count) + "times"
     self.count = 0
     return action
   def expectimax(self, gameState, agentIndex, currentDepth, alpha, beta):
@@ -407,25 +406,35 @@ class AttackDanica(AlphaBetaAgent):
     # Computes distance to defenders we can see
     observation = self.getCurrentObservation()
     enemies = [gameState.getAgentState(i) for i in self.getOpponents(gameState)]
+    invaders = [a for a in enemies if a.isPacman and self.getEnemyPosition(gameState, a) != None and a.scaredTimer <= 0]
     defenders = [a for a in enemies if not a.isPacman and self.getEnemyPosition(gameState, a) != None and a.scaredTimer <= 0]
     scaredDefenders = [a for a in enemies if not a.isPacman and self.getEnemyPosition(gameState, a) != None and a.scaredTimer > 0]
+    print len(invaders)
+    # Min distance to attacker
+    dists = None
+    features['numInvaders'] = len(invaders)
+    if len(invaders) > 0:
+      dists = [self.getMazeDistance(myPos, self.getEnemyPosition(gameState, a)) for a in invaders]
+      features['attackerDistance'] = 1.0/(0.01+min(dists))
 
     # Min distance to defender
     dists = None
     if len(defenders) > 0:
       dists = [self.getMazeDistance(myPos, self.getEnemyPosition(gameState, a)) for a in defenders]
-      features['defenderDistance'] = 1.0/(0.01+min(dists))
+      features['defenderDistance'] = -min(dists)
 
     # Min distance to scared defender
     dists = None
     features['scared'] = len(scaredDefenders)
     if len(scaredDefenders) > 0:
       dists = [self.getMazeDistance(myPos, self.getEnemyPosition(gameState, a)) for a in scaredDefenders]
-      features['scaredDefenderDistance'] = 1.0/(min(dists)+0.1)
+      features['scaredDefenderDistance'] = 1.0/(max(min(dists), 0.8))
 
     #big pellet
     closest = 100000
-    for capsule in self.getCapsules(gameState):
+    capsules = self.getCapsules(gameState)
+    features['numCapsules'] = len(capsules)
+    for capsule in capsules:
       dist = self.getMazeDistance(myPos, capsule)
       if dist < closest:
         closest = dist
@@ -440,7 +449,7 @@ class AttackDanica(AlphaBetaAgent):
 
     return features
   def getWeights(self, gameState):
-      return {'score': 10, 'foodRemaining': -10, 'distanceToFood': 6, 'defenderDistance': -8, 'scaredDefenderDistance': 1, 'homeDistance': 20, 'scared': 1}
+      return {'numInvaders': -10, 'score': 15, 'foodRemaining': -12, 'distanceToFood': 6, 'defenderDistance': 10, 'homeDistance': 20, 'scared': -2, 'numCapsules': -10}
 
 class ReflexCaptureAgent(CaptureAgent):
   """
@@ -533,7 +542,7 @@ class DefenceTaichi(ReflexCaptureAgent):
     score = self.getScore(successor)
     # Computes whether we're on defense (1) or offense (0)
     features['onDefense'] = 1
-    if myState.isPacman or myState.scaredTimer > 10: features['onDefense']  = -1
+    if myState.isPacman: features['onDefense']  = 0
 
     # Computes distance to invaders we can see
     enemies = [successor.getAgentState(i) for i in self.getOpponents(successor)]
