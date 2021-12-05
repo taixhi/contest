@@ -19,6 +19,7 @@ import game
 import distanceCalculator
 from util import nearestPoint
 
+import math
 import itertools
 
 class ParticleFilter:
@@ -101,6 +102,12 @@ class MultiAgentSearchAgent(CaptureAgent):
     #(self.pf).initialize(gameState, self.index, self.getOpponents(gameState))
     self.ourInitialFoodList = self.getFoodYouAreDefending(gameState).asList()
     self.count = 0
+
+    self.distancer.getMazeDistances()
+    # homePos = gameState.getInitialAgentPosition(self.index)
+    # foodList = self.getFood(gameState).asList()
+    # delta = [{'pos':food, 'dist':self.getMazeDistance(homePos, food)} for food in foodList]
+    # print delta
     # jointInference.initialize(gameState, )
 
 
@@ -217,11 +224,11 @@ class MultiAgentSearchAgent(CaptureAgent):
     else:
       return successor
 
-  def evaluate(self, gameState):
+  def evaluate(self, gameState, prevGameState):
     """
     Computes a linear combination of features and feature weights
     """
-    features = self.getFeatures(gameState)
+    features = self.getFeatures(gameState, prevGameState)
     weights = self.getWeights(gameState)
     return features * weights
 
@@ -241,7 +248,7 @@ class MultiAgentSearchAgent(CaptureAgent):
     homePos = gameState.getInitialAgentPosition(self.index)
     delta = self.getMazeDistance(ourPos, homePos)
     return delta
-  def getFeatures(self, gameState):
+  def getFeatures(self, gameState, prevGameState):
     """
     Returns a counter of features for the state
     """
@@ -282,41 +289,37 @@ class AlphaBetaAgent(MultiAgentSearchAgent):
     Your minimax agent (question 2)
   """
   def chooseAction(self, gameState):
-    action = self.minimax(gameState,self.index,0, -10000, 10000)[1]
-    #print gameState.getAgentState(self.index).getPosition()
+    action = self.minimax(gameState,self.index,0, -10000, 10000, None)[1]
+    print "chose action: ", action, gameState.getAgentState(self.index).getPosition()
     return action
-  def minimax(self, gameState, agentIndex, currentDepth, alpha, beta):
+  def minimax(self, gameState, agentIndex, currentDepth, alpha, beta, prevGameState):
       # Function returns a tuple with proper action and value computed by the function
       # base case
       enemies = [(i, gameState.getAgentState(i)) for i in self.getOpponents(gameState)]
       temp = [a for a in enemies if a[1].getPosition() != None]
       visibleEnemyIndicies = [a[0] for a in temp if self.getMazeDistance(gameState.getAgentState(self.index).getPosition(), a[1].getPosition()) < 6
       ]
-
       if(currentDepth == self.depth * gameState.getNumAgents()):
-          #print gameState.getAgentState(self.index).getPosition()
-          return (self.evaluate(gameState),"")
+          # print self.evaluate(gameState, prevGameState), gameState.getAgentState(self.index).getPosition()
+          return (self.evaluate(gameState, prevGameState),"")
       if(agentIndex==self.index): #maximizing option
           value = (-100000, "MAX_DEFAULT")
           for a in gameState.getLegalActions(agentIndex):
-              # print a
-              mm = self.minimax(self.getSuccessor(gameState,a),self.getNextAgent(gameState, agentIndex),currentDepth+1, alpha, beta)
-              if mm[0] > value[0]:
-                  value = (mm[0],a)
-              alpha = max(alpha, value[0])
-              if beta < alpha: # prune
-                  break
-              # print "maximizing action " + str(value[1])
+                mm = self.minimax(self.getSuccessor(gameState,a),self.getNextAgent(gameState, agentIndex),currentDepth+1, alpha, beta, gameState)
+                if mm[0] > value[0]:
+                    value = (mm[0],a)
+                alpha = max(alpha, value[0])
+                if beta < alpha: # prune
+                    break
           return value
       elif agentIndex in visibleEnemyIndicies:
         value = (100000, "MIN_DEFAULT")
-        # print "miniimizing"
         if agentIndex == gameState.getNumAgents() - 1:
             newAgentIndex = 0
         else:
             newAgentIndex = agentIndex + 1
         for a in gameState.getLegalActions(agentIndex): # recurse to find minimum
-            mm = self.minimax(gameState.generateSuccessor(agentIndex,a),self.getNextAgent(gameState, agentIndex),currentDepth+1, alpha, beta)
+            mm = self.minimax(gameState.generateSuccessor(agentIndex,a),self.getNextAgent(gameState, agentIndex),currentDepth+1, alpha, beta, gameState)
             if mm[0] < value[0]:
                 value = (mm[0],a)
             beta = min(beta, value[0])
@@ -324,7 +327,7 @@ class AlphaBetaAgent(MultiAgentSearchAgent):
                 break
         return value
       else:
-        return self.minimax(gameState,self.getNextAgent(gameState, agentIndex),currentDepth + 1, alpha, beta)
+        return self.minimax(gameState,self.getNextAgent(gameState, agentIndex),currentDepth + 1, alpha, beta, prevGameState)
 
 class ExpectiMaxAgent(MultiAgentSearchAgent):
   """
@@ -332,7 +335,7 @@ class ExpectiMaxAgent(MultiAgentSearchAgent):
   """
   def chooseAction(self, gameState):
     action = self.expectimax(gameState,self.index,0, -10000, 10000)[1]
-    print "ran expectimax " + str(self.count) + "times"
+    # print "ran expectimax " + str(self.count) + "times"
     self.count = 0
     return action
   def expectimax(self, gameState, agentIndex, currentDepth, alpha, beta):
@@ -382,7 +385,7 @@ class AttackRyan(ExpectiMaxAgent):
   we give you to get an idea of what an offensive agent might look like,
   but it is by no means the best or only way to build an offensive agent.
   """
-  def getFeatures(self, gameState):
+  def getFeatures(self, gameState, prevGameState):
     features = util.Counter()
     foodList = self.getFood(gameState).asList()
     features['successorScore'] = -len(foodList)#self.getScore(successor)
@@ -417,9 +420,10 @@ class AttackDanica(AlphaBetaAgent):
   but it is by no means the best or only way to build an offensive agent.
   """
   # Add the
-  def getFeatures(self, gameState):
+  def getFeatures(self, gameState, prevGameState):
     features = util.Counter()
     foodList = self.getFood(gameState).asList()
+
     self.observeState(gameState)
     self.elapseTime(gameState)
 
@@ -430,30 +434,48 @@ class AttackDanica(AlphaBetaAgent):
     myPos = gameState.getAgentState(self.index).getPosition()
     if len(foodList) > 0: # This should always be True,  but better safe than sorry
       minDistance = min([self.getMazeDistance(myPos, food) for food in foodList])
-      features['distanceToFood'] = 1.0/minDistance
+      features['distanceToFood'] = 1.0/max(0.1, minDistance)
 
     # Computes distance to defenders we can see
     observation = self.getCurrentObservation()
+    buds =  [gameState.getAgentState(i) for i in self.getTeam(gameState) if i != self.index]
     enemies = [gameState.getAgentState(i) for i in self.getOpponents(gameState)]
+    invaders = [a for a in enemies if a.isPacman and self.getEnemyPosition(gameState, a) != None and a.scaredTimer <= 0]
     defenders = [a for a in enemies if not a.isPacman and self.getEnemyPosition(gameState, a) != None and a.scaredTimer <= 0]
-    scaredDefenders = [a for a in enemies if not a.isPacman and self.getEnemyPosition(gameState, a) != None and a.scaredTimer > 0]
+    scaredDefenders = [a for a in enemies if not a.isPacman and self.getEnemyPosition(gameState, a) != None and a.scaredTimer > 5]
+    print len(invaders)
+    # Min distance to bud
+    dists = None
+    if len(buds) > 0:
+      dists = [self.getMazeDistance(myPos, a.getPosition()) for a in buds]
+      features['budDistance'] = min(dists)
+
+
+    # Min distance to attacker
+    dists = None
+    features['numInvaders'] = len(invaders)
+    if len(invaders) > 0:
+      dists = [self.getMazeDistance(myPos, self.getEnemyPosition(gameState, a)) for a in invaders]
+      features['attackerDistance'] = 1.0/(0.01+min(dists))
 
     # Min distance to defender
     dists = None
     if len(defenders) > 0:
       dists = [self.getMazeDistance(myPos, self.getEnemyPosition(gameState, a)) for a in defenders]
-      features['defenderDistance'] = min(dists)
+      features['defenderDistance'] = 2**min(dists)
 
     # Min distance to scared defender
     dists = None
     features['scared'] = len(scaredDefenders)
     if len(scaredDefenders) > 0:
       dists = [self.getMazeDistance(myPos, self.getEnemyPosition(gameState, a)) for a in scaredDefenders]
-      features['scaredDefenderDistance'] = 1.0/(min(dists)+0.1)
+      features['scaredDefenderDistance'] = 1.0/(min(dists) + 0.0001)
 
     #big pellet
     closest = 100000
-    for capsule in self.getCapsules(gameState):
+    capsules = self.getCapsules(gameState)
+    features['numCapsules'] = len(capsules)
+    for capsule in capsules:
       dist = self.getMazeDistance(myPos, capsule)
       if dist < closest:
         closest = dist
@@ -461,17 +483,14 @@ class AttackDanica(AlphaBetaAgent):
 
 
     food = gameState.getAgentState(self.index).numCarrying
-    if food >= 4:
-      features['homeDistance'] =  food/4.0/(0.0001+self.getDistToHome(gameState))
+    if food >= 2:
+      features['homeDistance'] = 10.0/max(0.1, self.getDistToHome(gameState))
     else:
-      features['homeDistance'] =  0.01
-    return features
+      features['homeDistance'] = 0
 
+    return features
   def getWeights(self, gameState):
-      return {'successorScore': -10, 'distanceToFood': 10, 'defenderDistance': 100, 'scaredDefenderDistance': 10, 'homeDistance': 5000, 'scared': 10, 'score': 10}
-    #TODO: may be checking one step too early ... one space away from target space
-    #TODO: weightings or something are weird ... the bot acts stupid
-    #return {'shoot': 1100}
+      return {'budDistance': 0, 'numInvaders': -100, 'score': 20, 'foodRemaining': -15, 'distanceToFood': 10, 'defenderDistance': 5, 'homeDistance': 40, 'scared': -2, 'numCapsules': -10, 'scaredDefenderDistance': 5}
 
 class ReflexCaptureAgent(CaptureAgent):
   """
@@ -546,6 +565,15 @@ class ReflexCaptureAgent(CaptureAgent):
     a counter or a dictionary.
     """
     return {'successorScore': 1.0}
+  def getEnemyPosition(self, gameState, agentState):
+      # if in range, return actual,
+      pos = agentState.getPosition()
+      if (pos != None):
+        return pos
+      else:
+          # particle filter
+          return None
+      return None
 
 class DefenceTaichi(ReflexCaptureAgent):
   """
@@ -561,10 +589,10 @@ class DefenceTaichi(ReflexCaptureAgent):
 
     myState = successor.getAgentState(self.index)
     myPos = myState.getPosition()
-
+    score = self.getScore(successor)
     # Computes whether we're on defense (1) or offense (0)
     features['onDefense'] = 1
-    if myState.isPacman: features['onDefense'] = 0
+    if myState.isPacman: features['onDefense']  = 0
 
     # Computes distance to invaders we can see
     enemies = [successor.getAgentState(i) for i in self.getOpponents(successor)]
@@ -577,11 +605,12 @@ class DefenceTaichi(ReflexCaptureAgent):
     if action == Directions.STOP: features['stop'] = 1
     rev = Directions.REVERSE[gameState.getAgentState(self.index).configuration.direction]
     if action == rev: features['reverse'] = 1
-
+    scaredDefenders = [a for a in enemies if not a.isPacman and self.getEnemyPosition(gameState, a) != None and a.scaredTimer > 5]
+    # Min distance to scared defender
+    features['amIScared'] = myState.scaredTimer
     return features
-
   def getWeights(self, gameState, action):
-    return {'numInvaders': -1000, 'onDefense': 100, 'invaderDistance': -10, 'stop': -100, 'reverse': -2}
+    return {'score': 100, 'numInvaders': -1000, 'onDefense': 100, 'invaderDistance': -10, 'stop': -100, 'reverse': -2, 'amIScared': 0}
 # class DefenceTaichi(ReflexCaptureAgent):
 #   """
 #   A reflex agent that keeps its side Pacman-free. Again,
