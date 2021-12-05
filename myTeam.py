@@ -22,7 +22,18 @@ from util import nearestPoint
 import math
 import itertools
 
-jointInference = None
+class ParticleFilter:
+    def __init__(self, numParticles=600):
+        self.numParticles = numParticles
+
+    def initialize(self, gameState, myIndex, enemyIndicies):
+        self.myIndex = myIndex
+        self.enemyIndicies = enemyIndicies
+        self.numEnemies = len(enemyIndicies)
+        self.legalPositions = gameState.getWalls().asList(False)
+        self.initializeParticles()
+
+
 
 #################
 # Team creation #
@@ -49,96 +60,46 @@ def createTeam(firstIndex, secondIndex, isRed,
 
   return [eval(first)(firstIndex), eval(second)(secondIndex)]
 
-#TODO: create global particlefilter object
-class ParticleFilter:
-    def __init__(self, numParticles=600):
-        self.numParticles = numParticles
-
-    def initialize(self, gameState):
-        self.numGhosts = 2 #gameState.getNumAgents() - 1
-        self.ghostAgents = []
-        self.legalPositions = gameState.getWalls().asList(False)
-        self.initializeParticles()
-
-    def initializeParticles(self):
-        self.particles = []
-        legalPositions = [self.legalPositions] * self.numGhosts
-        d = list(itertools.product(*legalPositions))
-        random.shuffle(d)
-        numPerPosition = self.numParticles/len(d)
-        remainder = self.numParticles%len(d)
-        for p in d:
-            c = numPerPosition
-            while c is not 0:
-                self.particles.append(p)
-                c -= 1
-        for i in range(remainder):
-            self.particles.append(d[i])
-
-    def addGhostAgent(self, agent):
-        """
-        Each ghost agent is registered separately and stored (in case they are
-        different).
-        """
-        self.ghostAgents.append(agent)
-
-    def observeState(self, gameState):
-        pacmanPosition = gameState.getPacmanPosition()
-        noisyDistances = gameState.getNoisyGhostDistances()
-        if len(noisyDistances) < self.numGhosts:
-            return
-        emissionModels = [busters.getObservationDistribution(dist) for dist in noisyDistances]
-        newSamples = [None]* self.numParticles
-        weights = [1] * self.numParticles
-        for ghostIdx in range(self.numGhosts):
-            if noisyDistances[ghostIdx] == None: # If ghost is in jail, put the specific ghost in jail for all particles
-                for i in range(self.numParticles):
-                    newSamples[i] = self.getParticleWithGhostInJail(self.particles[i], ghostIdx)
-            else:
-                for i in range(self.numParticles):
-                    trueDistance = util.manhattanDistance(self.particles[i][ghostIdx], pacmanPosition)
-                    weights[i] *= emissionModels[ghostIdx][trueDistance]
-        if sum(weights) == 0:
-            self.initializeParticles()
-            newSamples = self.particles
-        else:
-            beliefs = util.Counter()
-            for i in range(self.numParticles):
-                beliefs[self.particles[i]] += weights[i]
-            beliefs.normalize()
-            for i in range(self.numParticles):
-                newSamples[i] = util.sample(beliefs)
-        self.particles = newSamples
-
-    def elapseTime(self, gameState):
-        newParticles = []
-        for oldParticle in self.particles:
-            newParticle = list(oldParticle) # A list of ghost positions
-            # now loop through and update each entry in newParticle...
-            newParticles.append(tuple(newParticle))
-        self.particles = newParticles
-
-    def getBeliefDistribution(self):
-        beliefs = util.Counter()
-        for poss in self.particles:
-            beliefs[poss] += 1
-        beliefs.normalize()
-        return beliefs
-
-pf = ParticleFilter()
-
-
 ##########
 # Agents #
 ##########
 class MultiAgentSearchAgent(CaptureAgent):
+  def initializeParticles(self, gameState, myIndex, enemyIndicies):
+    self.numParticles = 600
+    self.myIndex = myIndex
+    self.enemyIndicies = enemyIndicies
+    self.ghostIndexMap = {}
+    for i, v in enumerate(enemyIndicies):
+        self.ghostIndexMap[v] = i
+    self.numEnemies = len(enemyIndicies)
+    self.legalPositions = gameState.getWalls().asList(False)
+    self.particles = []
+
+    legalPositions = [self.legalPositions] * self.numEnemies
+    d = list(itertools.product(*legalPositions))
+    random.shuffle(d)
+    numPerPosition = self.numParticles/len(d)
+    remainder = self.numParticles%len(d)
+    for p in d:
+        c = numPerPosition
+        while c is not 0:
+            self.particles.append(p)
+            c -= 1
+    for i in range(remainder):
+        self.particles.append(d[i])
+
+  # def ghostIdxToParticle(self, idx):
+  #
 
   def registerInitialState(self, gameState):
     self.start = gameState.getAgentPosition(self.index)
     CaptureAgent.registerInitialState(self, gameState)
-    pf.initialize(gameState)
+    #pf.initialize(gameState, m)
 
     self.depth = 2
+    self.initializeParticles(gameState, self.index, self.getOpponents(gameState))
+    #self.pf = ParticleFilter()
+    #(self.pf).initialize(gameState, self.index, self.getOpponents(gameState))
     self.ourInitialFoodList = self.getFoodYouAreDefending(gameState).asList()
     self.count = 0
 
@@ -149,14 +110,80 @@ class MultiAgentSearchAgent(CaptureAgent):
     # print delta
     # jointInference.initialize(gameState, )
 
-  def chooseAction(self, gameState):
-    """
-      Returns the expectimax action using self.depth and self.evaluationFunction
 
-      All ghosts should be modeled as choosing uniformly at random from their
-      legal moves.
-    """
-    return None
+    #print self.particles
+  def observeState(self, gameState):
+    myPos = gameState.getAgentState(self.myIndex).getPosition()
+        #pacmanPosition = gameState.getPacmanPosition()
+    noisyDistances = {}
+    for i in self.enemyIndicies:
+      noisyDist = gameState.getAgentDistances()[i]
+      noisyDistances[i] = noisyDist
+            #noisyDistances.append(self.noisyDistance(myPos, gameState.getAgentDistances()[i]))
+    if len(noisyDistances) < self.numEnemies:
+      return
+
+    #for p in self.particles:
+    #    truePartDist = distanceCalculator.manhattanDistance(myPos, p)
+    #trueDist = distanceCalculator.manhattanDistance(myPos, )
+    '''
+    emissionModels = {}
+    for ghostIdx in range in self.particles:
+      for i in range(self.numEnemies):
+        prob = gameState.getDistanceProb(self.getMazeDistance(myPos, p[i]), noisyDistances[i])
+        emissionModels[i] = prob
+        #   def getDistanceProb(self, trueDistance, noisyDistance):
+    '''
+    emissionModels = {}
+    for ghostIdx in self.enemyIndicies:
+      probList = []
+      for p in self.particles:
+        #TODO: why is each particle a tuple of coordinates?
+        prob = gameState.getDistanceProb(self.getMazeDistance(myPos, p[self.ghostIndexMap[ghostIdx]]), noisyDistances[ghostIdx])
+        probList.append(prob)
+      emissionModels[ghostIdx] = probList
+    #emissionModels = [busters.getObservationDistribution(dist) for dist in noisyDistances]
+    #emissionModels = [gameState.getDistanceProb(dist, util.manhattanDistance(myPos, p)) for p in self.particles]
+    #  emissionModels = [gameState.getObservationDistribution(dist) for dist in noisyDistances]
+
+    newSamples = [None] * self.numParticles
+    weights = [1] * self.numParticles
+    for ghostIdx in self.enemyIndicies:
+      for i in range(self.numParticles):
+        trueDistance = self.getMazeDistance(self.particles[i][self.ghostIndexMap[ghostIdx]], myPos)
+        print trueDistance
+        #print emissionModels[0]
+        weights[i] *= emissionModels[ghostIdx][trueDistance]
+      if sum(weights) == 0:
+        self.initializeParticles()
+        newSamples = self.particles
+      else:
+        beliefs = util.Counter()
+        for i in range(self.numParticles):
+          beliefs[self.particles[i]] += weights[i]
+        beliefs.normalize()
+        for i in range(self.numParticles):
+          newSamples[i] = util.sample(beliefs)
+        self.particles = newSamples
+
+    def elapseTime(self, gameState):
+      newParticles = []
+      for oldParticle in self.particles:
+        newParticle = list(oldParticle) # A list of ghost positions
+        # now loop through and update each entry in newParticle...
+        newParticles.append(tuple(newParticle))
+      self.particles = newParticles
+
+    def getBeliefDistribution(self):
+      beliefs = util.Counter()
+      for poss in self.particles:
+        beliefs[poss] += 1
+        beliefs.normalize()
+      return beliefs
+
+
+    def chooseAction(self, gameState):
+        return None
     # """
     # Picks among the actions with the highest Q(s,a).
     # """
@@ -249,6 +276,8 @@ class MultiAgentSearchAgent(CaptureAgent):
       if (pos != None):
         return pos
       else:
+          beliefs = self.getBeliefDistribution()
+          likelyPosition = max(beliefs.items(), key=lambda x: x[1])
           # particle filter
           return None
       return None
@@ -394,8 +423,12 @@ class AttackDanica(AlphaBetaAgent):
   def getFeatures(self, gameState, prevGameState):
     features = util.Counter()
     foodList = self.getFood(gameState).asList()
-    features['foodRemaining'] = len(foodList)
-    features['score'] = max(0.1,self.getScore(gameState))
+
+    self.observeState(gameState)
+    self.elapseTime(gameState)
+
+    features['successorScore'] = len(foodList)
+    features['score'] = self.getScore(gameState)
 
     # Compute distance to the nearest food
     myPos = gameState.getAgentState(self.index).getPosition()
