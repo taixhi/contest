@@ -450,14 +450,14 @@ class AttackDanica(AlphaBetaAgent):
 
 
     food = gameState.getAgentState(self.index).numCarrying
-    if food >= 2:
-      features['homeDistance'] = 10.0/max(0.1, self.getDistToHome(gameState))
+    if food >= 3:
+      features['homeDistance'] = food*5.0/max(0.1, self.getDistToHome(gameState))
     else:
       features['homeDistance'] = 0
 
     return features
   def getWeights(self, gameState):
-      return {'budDistance': 0, 'numInvaders': -100, 'score': 20, 'foodRemaining': -15, 'distanceToFood': 10, 'defenderDistance': 5, 'homeDistance': 40, 'scared': -2, 'numCapsules': -10, 'scaredDefenderDistance': 5}
+      return {'budDistance': 0, 'numInvaders': -100, 'score': 10, 'foodRemaining': -15, 'distanceToFood': 10, 'defenderDistance': 5, 'homeDistance': 40, 'scared': -20, 'numCapsules': -10, 'scaredDefenderDistance': 50}
 
 class ReflexCaptureAgent(CaptureAgent):
   """
