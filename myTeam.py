@@ -44,7 +44,7 @@ def createTeam(firstIndex, secondIndex, isRed,
   """
 
   # The following line is an example only; feel free to change it.
-  jointInference = JointParticleFilter
+  # jointInference = JointParticleFilter
 
   return [eval(first)(firstIndex), eval(second)(secondIndex)]
 
@@ -236,8 +236,15 @@ class MultiAgentSearchAgent(CaptureAgent):
         newAgentIndex = agentIndex + 1
     return newAgentIndex
 
-  def getEnemyPosition(self, gameState):
-      
+  def getEnemyPosition(self, gameState, agentState):
+      # if in range, return actual,
+      pos = agentState.getPosition()
+      if (pos != None):
+        return pos
+      else:
+          # particle filter
+          return None
+      return None
 
 
 
@@ -380,6 +387,7 @@ class AttackDanica(AlphaBetaAgent):
   we give you to get an idea of what an offensive agent might look like,
   but it is by no means the best or only way to build an offensive agent.
   """
+  # Add the
   def getFeatures(self, gameState):
     features = util.Counter()
     foodList = self.getFood(gameState).asList()
@@ -395,20 +403,20 @@ class AttackDanica(AlphaBetaAgent):
     # Computes distance to defenders we can see
     observation = self.getCurrentObservation()
     enemies = [gameState.getAgentState(i) for i in self.getOpponents(gameState)]
-    defenders = [a for a in enemies if not a.isPacman and a.getPosition() != None and a.scaredTimer <= 0]
-    scaredDefenders = [a for a in enemies if not a.isPacman and a.getPosition() != None and a.scaredTimer > 0]
+    defenders = [a for a in enemies if not a.isPacman and self.getEnemyPosition(gameState, a) != None and a.scaredTimer <= 0]
+    scaredDefenders = [a for a in enemies if not a.isPacman and self.getEnemyPosition(gameState, a) != None and a.scaredTimer > 0]
 
     # Min distance to defender
     dists = None
     if len(defenders) > 0:
-      dists = [self.getMazeDistance(myPos, a.getPosition()) for a in defenders]
+      dists = [self.getMazeDistance(myPos, self.getEnemyPosition(gameState, a)) for a in defenders]
       features['defenderDistance'] = min(dists)
 
     # Min distance to scared defender
     dists = None
     features['scared'] = len(scaredDefenders)
     if len(scaredDefenders) > 0:
-      dists = [self.getMazeDistance(myPos, a.getPosition()) for a in scaredDefenders]
+      dists = [self.getMazeDistance(myPos, self.getEnemyPosition(gameState, a)) for a in scaredDefenders]
       features['scaredDefenderDistance'] = 1.0/(min(dists)+0.1)
 
     #big pellet
