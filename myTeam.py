@@ -395,7 +395,7 @@ class AttackDanica(AlphaBetaAgent):
     features = util.Counter()
     foodList = self.getFood(gameState).asList()
     features['foodRemaining'] = len(foodList)
-    features['score'] = math.log(max(0.1,self.getScore(gameState)))
+    features['score'] = max(0.1,self.getScore(gameState))
 
     # Compute distance to the nearest food
     myPos = gameState.getAgentState(self.index).getPosition()
@@ -405,11 +405,19 @@ class AttackDanica(AlphaBetaAgent):
 
     # Computes distance to defenders we can see
     observation = self.getCurrentObservation()
+    buds =  [gameState.getAgentState(i) for i in self.getTeam(gameState) if i != self.index]
     enemies = [gameState.getAgentState(i) for i in self.getOpponents(gameState)]
     invaders = [a for a in enemies if a.isPacman and self.getEnemyPosition(gameState, a) != None and a.scaredTimer <= 0]
     defenders = [a for a in enemies if not a.isPacman and self.getEnemyPosition(gameState, a) != None and a.scaredTimer <= 0]
-    scaredDefenders = [a for a in enemies if not a.isPacman and self.getEnemyPosition(gameState, a) != None and a.scaredTimer > 0]
+    scaredDefenders = [a for a in enemies if not a.isPacman and self.getEnemyPosition(gameState, a) != None and a.scaredTimer > 5]
     print len(invaders)
+    # Min distance to bud
+    dists = None
+    if len(buds) > 0:
+      dists = [self.getMazeDistance(myPos, a.getPosition()) for a in buds]
+      features['budDistance'] = min(dists)
+
+
     # Min distance to attacker
     dists = None
     features['numInvaders'] = len(invaders)
@@ -421,14 +429,14 @@ class AttackDanica(AlphaBetaAgent):
     dists = None
     if len(defenders) > 0:
       dists = [self.getMazeDistance(myPos, self.getEnemyPosition(gameState, a)) for a in defenders]
-      features['defenderDistance'] = -min(dists)
+      features['defenderDistance'] = 2**min(dists)
 
     # Min distance to scared defender
     dists = None
     features['scared'] = len(scaredDefenders)
     if len(scaredDefenders) > 0:
       dists = [self.getMazeDistance(myPos, self.getEnemyPosition(gameState, a)) for a in scaredDefenders]
-      features['scaredDefenderDistance'] = 1.0/(max(min(dists), 0.8))
+      features['scaredDefenderDistance'] = 1.0/(min(dists) + 0.0001)
 
     #big pellet
     closest = 100000
@@ -442,14 +450,14 @@ class AttackDanica(AlphaBetaAgent):
 
 
     food = gameState.getAgentState(self.index).numCarrying
-    if food >= 3:
+    if food >= 2:
       features['homeDistance'] = 10.0/max(0.1, self.getDistToHome(gameState))
     else:
       features['homeDistance'] = 0
 
     return features
   def getWeights(self, gameState):
-      return {'numInvaders': -10, 'score': 15, 'foodRemaining': -12, 'distanceToFood': 6, 'defenderDistance': 10, 'homeDistance': 20, 'scared': -2, 'numCapsules': -10}
+      return {'budDistance': 0, 'numInvaders': -100, 'score': 20, 'foodRemaining': -15, 'distanceToFood': 10, 'defenderDistance': 5, 'homeDistance': 40, 'scared': -2, 'numCapsules': -10, 'scaredDefenderDistance': 5}
 
 class ReflexCaptureAgent(CaptureAgent):
   """
@@ -524,6 +532,15 @@ class ReflexCaptureAgent(CaptureAgent):
     a counter or a dictionary.
     """
     return {'successorScore': 1.0}
+  def getEnemyPosition(self, gameState, agentState):
+      # if in range, return actual,
+      pos = agentState.getPosition()
+      if (pos != None):
+        return pos
+      else:
+          # particle filter
+          return None
+      return None
 
 class DefenceTaichi(ReflexCaptureAgent):
   """
@@ -555,11 +572,12 @@ class DefenceTaichi(ReflexCaptureAgent):
     if action == Directions.STOP: features['stop'] = 1
     rev = Directions.REVERSE[gameState.getAgentState(self.index).configuration.direction]
     if action == rev: features['reverse'] = 1
-
+    scaredDefenders = [a for a in enemies if not a.isPacman and self.getEnemyPosition(gameState, a) != None and a.scaredTimer > 5]
+    # Min distance to scared defender
+    features['amIScared'] = myState.scaredTimer
     return features
-
   def getWeights(self, gameState, action):
-    return {'score': 100, 'numInvaders': -1000, 'onDefense': 100, 'invaderDistance': -10, 'stop': -100, 'reverse': -2}
+    return {'score': 100, 'numInvaders': -1000, 'onDefense': 100, 'invaderDistance': -10, 'stop': -100, 'reverse': -2, 'amIScared': 0}
 # class DefenceTaichi(ReflexCaptureAgent):
 #   """
 #   A reflex agent that keeps its side Pacman-free. Again,
