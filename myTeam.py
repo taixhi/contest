@@ -22,18 +22,6 @@ from util import nearestPoint
 import math
 import itertools
 
-class ParticleFilter:
-    def __init__(self, numParticles=600):
-        self.numParticles = numParticles
-
-    def initialize(self, gameState, myIndex, enemyIndicies):
-        self.myIndex = myIndex
-        self.enemyIndicies = enemyIndicies
-        self.numEnemies = len(enemyIndicies)
-        self.legalPositions = gameState.getWalls().asList(False)
-        self.initializeParticles()
-
-
 
 #################
 # Team creation #
@@ -70,7 +58,7 @@ class MultiAgentSearchAgent(CaptureAgent):
     self.start = gameState.getAgentPosition(self.index)
     CaptureAgent.registerInitialState(self, gameState)
 
-    self.depth = 2
+    self.depth = 3
     self.ourInitialFoodList = self.getFoodYouAreDefending(gameState).asList()
     self.count = 0
 
@@ -133,6 +121,7 @@ class MultiAgentSearchAgent(CaptureAgent):
     """
     features = self.getFeatures(gameState, prevGameState)
     weights = self.getWeights(gameState)
+    print gameState.getAgentState(self.index).getPosition(), features
     return features * weights
 
   def getDistToHome(self, gameState):
@@ -317,7 +306,7 @@ class AttackDanica(AlphaBetaAgent):
     features = util.Counter()
     foodList = self.getFood(gameState).asList()
     features['foodRemaining'] = len(foodList)
-    features['score'] = max(0.1,self.getScore(gameState))
+    features['score'] = self.getScore(gameState)
 
     # Compute distance to the nearest food
     myPos = gameState.getAgentState(self.index).getPosition()
@@ -350,7 +339,7 @@ class AttackDanica(AlphaBetaAgent):
     dists = None
     if len(defenders) > 0:
       dists = [self.getMazeDistance(myPos, self.getEnemyPosition(gameState, a)) for a in defenders]
-      features['defenderDistance'] = 2**min(dists)
+      features['defenderDistance'] = min(dists)
 
     # Min distance to scared defender
     dists = None
@@ -371,14 +360,17 @@ class AttackDanica(AlphaBetaAgent):
 
 
     food = gameState.getAgentState(self.index).numCarrying
+    features['numCarrying'] = food
     if food >= 3:
-      features['homeDistance'] = food*5.0/max(0.1, self.getDistToHome(gameState))
+      features['homeDistance'] = max(5,food)*5.0/max(0.1, self.getDistToHome(gameState))
     else:
       features['homeDistance'] = 0
 
     return features
   def getWeights(self, gameState):
-      return {'budDistance': 0, 'numInvaders': -100, 'score': 10, 'foodRemaining': -15, 'distanceToFood': 10, 'defenderDistance': 5, 'homeDistance': 40, 'scared': -20, 'numCapsules': -10, 'scaredDefenderDistance': 50}
+      return {'numCarrying': -5, 'numInvaders': -100, 'score': 10, 'foodRemaining': -15,
+      'distanceToFood': 10, 'defenderDistance': 5, 'homeDistance': 40, 'scared': -20,
+      'numCapsules': -20, 'scaredDefenderDistance': 50}
 
 class ReflexCaptureAgent(CaptureAgent):
   """
@@ -386,7 +378,7 @@ class ReflexCaptureAgent(CaptureAgent):
   """
 
   def initializeParticles(self, gameState, myIndex, enemyIndicies):
-    self.numParticles = 600
+    self.numParticles = 300
     self.myIndex = myIndex
     self.enemyIndicies = enemyIndicies
     self.ghostIndexMap = {}
@@ -456,8 +448,8 @@ class ReflexCaptureAgent(CaptureAgent):
     for ghostIdx in self.enemyIndicies:
       for i in range(self.numParticles):
         trueDistance = self.getMazeDistance(self.particles[i][self.ghostIndexMap[ghostIdx]], myPos)
-  
-  
+
+
         weights[i] *= emissionModels[ghostIdx][trueDistance]
       if sum(weights) == 0:
         self.initializeParticles(gameState, self.index, self.enemyIndicies)
@@ -592,6 +584,10 @@ class DefenceTaichi(ReflexCaptureAgent):
     if len(invaders) > 0:
       dists = [self.getMazeDistance(myPos, self.getEnemyPosition(gameState, a)) for a in invaders]
       features['invaderDistance'] = min(dists)
+    else:
+      dists = [self.getMazeDistance(myPos, self.getEnemyPosition(gameState, a)) for a in enemies]
+      features['invaderDistance'] = min(dists)
+
 
     if action == Directions.STOP: features['stop'] = 1
     rev = Directions.REVERSE[gameState.getAgentState(self.index).configuration.direction]
