@@ -325,7 +325,7 @@ class AttackDanica(AlphaBetaAgent):
     dists = None
     if len(buds) > 0:
       dists = [self.getMazeDistance(myPos, a.getPosition()) for a in buds]
-      features['budDistance'] = min(dists)
+      features['budDistance'] = max(min(dists),0.1)
 
 
     # Min distance to attacker
@@ -366,11 +366,23 @@ class AttackDanica(AlphaBetaAgent):
     else:
       features['homeDistance'] = 0
 
+    myState = gameState.getAgentState(self.index)
+    myPos = myState.getPosition()
+      # Computes whether we're on defense (1) or offense (0)
+    features['onDefense'] = 1
+    if myState.isPacman: features['onDefense']  = 0
+
     return features
   def getWeights(self, gameState):
-      return {'numCarrying': -5, 'numInvaders': -100, 'score': 10, 'foodRemaining': -15,
-      'distanceToFood': 10, 'defenderDistance': 5, 'homeDistance': 40, 'scared': -20,
-      'numCapsules': -20, 'scaredDefenderDistance': 50}
+      isScared = gameState.getAgentState(self.index).scaredTimer
+      if isScared or self.getScore(gameState) < 12:
+          return {'numCarrying': -5, 'numInvaders': -100, 'score': 10, 'foodRemaining': -15,
+          'distanceToFood': 10, 'defenderDistance': 5, 'homeDistance': 40, 'scared': -20,
+          'numCapsules': -20, 'scaredDefenderDistance': 50}
+      else:
+          return {'numInvaders': -100, 'onDefense': 100, 'budDistance': 500, 'score': 10, 'foodRemaining': -15,
+          'distanceToFood': 10, 'defenderDistance': 5, 'scared': -20,
+          'numCapsules': -20, 'scaredDefenderDistance': 50}
 
 class ReflexCaptureAgent(CaptureAgent):
   """
