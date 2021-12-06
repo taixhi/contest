@@ -146,7 +146,6 @@ class MultiAgentSearchAgent(CaptureAgent):
     # homePos = gameState.getInitialAgentPosition(self.index)
     # foodList = self.getFood(gameState).asList()
     # delta = [{'pos':food, 'dist':self.getMazeDistance(homePos, food)} for food in foodList]
-    # print delta
     # jointInference.initialize(gameState, )
 
   def chooseAction(self, gameState):
@@ -165,7 +164,6 @@ class MultiAgentSearchAgent(CaptureAgent):
     # # You can profile your evaluation time by uncommenting these lines
     # # start = time.time()
     # values = [self.evaluate(gameState, a) for a in actions]
-    # # print 'eval time for agent %d: %.4f' % (self.index, time.time() - start)
 
     # maxValue = max(values)
     # bestActions = [a for a, v in zip(actions, values) if v == maxValue]
@@ -210,12 +208,9 @@ class MultiAgentSearchAgent(CaptureAgent):
     '''
     closestDist = 6969696969420
     for food in self.ourInitialFoodList:
-      #print food
       dist = self.getMazeDistance(ourPos, food)
       if dist < closestDist:
         closestDist = dist
-        print food
-    #print closestDist
     return closestDist
     '''
     homePos = gameState.getInitialAgentPosition(self.index)
@@ -261,7 +256,6 @@ class AlphaBetaAgent(MultiAgentSearchAgent):
   """
   def chooseAction(self, gameState):
     action = self.minimax(gameState,self.index,0, -10000, 10000, None)[1]
-    print "chose action: ", action, gameState.getAgentState(self.index).getPosition()
     return action
   def minimax(self, gameState, agentIndex, currentDepth, alpha, beta, prevGameState):
       # Function returns a tuple with proper action and value computed by the function
@@ -271,7 +265,6 @@ class AlphaBetaAgent(MultiAgentSearchAgent):
       visibleEnemyIndicies = [a[0] for a in temp if self.getMazeDistance(gameState.getAgentState(self.index).getPosition(), a[1].getPosition()) < 6
       ]
       if(currentDepth == self.depth * gameState.getNumAgents()):
-          # print self.evaluate(gameState, prevGameState), gameState.getAgentState(self.index).getPosition()
           return (self.evaluate(gameState, prevGameState),"")
       if(agentIndex==self.index): #maximizing option
           value = (-100000, "MAX_DEFAULT")
@@ -306,7 +299,6 @@ class ExpectiMaxAgent(MultiAgentSearchAgent):
   """
   def chooseAction(self, gameState):
     action = self.expectimax(gameState,self.index,0, -10000, 10000)[1]
-    # print "ran expectimax " + str(self.count) + "times"
     self.count = 0
     return action
   def expectimax(self, gameState, agentIndex, currentDepth, alpha, beta):
@@ -377,8 +369,6 @@ class AttackRyan(ExpectiMaxAgent):
       dists = [self.getMazeDistance(myPos, a.getPosition()) for a in defenders]
       features['defenderDistance'] = min(dists)
 
-    # print dists
-    # print "======"
     return features
 
   def getWeights(self, gameState):
@@ -410,7 +400,6 @@ class AttackDanica(AlphaBetaAgent):
     invaders = [a for a in enemies if a.isPacman and self.getEnemyPosition(gameState, a) != None and a.scaredTimer <= 0]
     defenders = [a for a in enemies if not a.isPacman and self.getEnemyPosition(gameState, a) != None and a.scaredTimer <= 0]
     scaredDefenders = [a for a in enemies if not a.isPacman and self.getEnemyPosition(gameState, a) != None and a.scaredTimer > 5]
-    print len(invaders)
     # Min distance to bud
     dists = None
     if len(buds) > 0:
@@ -477,7 +466,6 @@ class ReflexCaptureAgent(CaptureAgent):
     # You can profile your evaluation time by uncommenting these lines
     # start = time.time()
     values = [self.evaluate(gameState, a) for a in actions]
-    # print 'eval time for agent %d: %.4f' % (self.index, time.time() - start)
 
     maxValue = max(values)
     bestActions = [a for a, v in zip(actions, values) if v == maxValue]

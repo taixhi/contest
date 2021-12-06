@@ -60,46 +60,17 @@ def createTeam(firstIndex, secondIndex, isRed,
 
   return [eval(first)(firstIndex), eval(second)(secondIndex)]
 
+
 ##########
 # Agents #
 ##########
 class MultiAgentSearchAgent(CaptureAgent):
-  def initializeParticles(self, gameState, myIndex, enemyIndicies):
-    self.numParticles = 600
-    self.myIndex = myIndex
-    self.enemyIndicies = enemyIndicies
-    self.ghostIndexMap = {}
-    for i, v in enumerate(enemyIndicies):
-        self.ghostIndexMap[v] = i
-    self.numEnemies = len(enemyIndicies)
-    self.legalPositions = gameState.getWalls().asList(False)
-    self.particles = []
-
-    legalPositions = [self.legalPositions] * self.numEnemies
-    d = list(itertools.product(*legalPositions))
-    random.shuffle(d)
-    numPerPosition = self.numParticles/len(d)
-    remainder = self.numParticles%len(d)
-    for p in d:
-        c = numPerPosition
-        while c is not 0:
-            self.particles.append(p)
-            c -= 1
-    for i in range(remainder):
-        self.particles.append(d[i])
-
-  # def ghostIdxToParticle(self, idx):
-  #
 
   def registerInitialState(self, gameState):
     self.start = gameState.getAgentPosition(self.index)
     CaptureAgent.registerInitialState(self, gameState)
-    #pf.initialize(gameState, m)
 
     self.depth = 2
-    self.initializeParticles(gameState, self.index, self.getOpponents(gameState))
-    #self.pf = ParticleFilter()
-    #(self.pf).initialize(gameState, self.index, self.getOpponents(gameState))
     self.ourInitialFoodList = self.getFoodYouAreDefending(gameState).asList()
     self.count = 0
 
@@ -107,83 +78,16 @@ class MultiAgentSearchAgent(CaptureAgent):
     # homePos = gameState.getInitialAgentPosition(self.index)
     # foodList = self.getFood(gameState).asList()
     # delta = [{'pos':food, 'dist':self.getMazeDistance(homePos, food)} for food in foodList]
-    # print delta
     # jointInference.initialize(gameState, )
 
+  def chooseAction(self, gameState):
+    """
+      Returns the expectimax action using self.depth and self.evaluationFunction
 
-    #print self.particles
-  def observeState(self, gameState):
-    myPos = gameState.getAgentState(self.myIndex).getPosition()
-        #pacmanPosition = gameState.getPacmanPosition()
-    noisyDistances = {}
-    for i in self.enemyIndicies:
-      noisyDist = gameState.getAgentDistances()[i]
-      noisyDistances[i] = noisyDist
-            #noisyDistances.append(self.noisyDistance(myPos, gameState.getAgentDistances()[i]))
-    if len(noisyDistances) < self.numEnemies:
-      return
-
-    #for p in self.particles:
-    #    truePartDist = distanceCalculator.manhattanDistance(myPos, p)
-    #trueDist = distanceCalculator.manhattanDistance(myPos, )
-    '''
-    emissionModels = {}
-    for ghostIdx in range in self.particles:
-      for i in range(self.numEnemies):
-        prob = gameState.getDistanceProb(self.getMazeDistance(myPos, p[i]), noisyDistances[i])
-        emissionModels[i] = prob
-        #   def getDistanceProb(self, trueDistance, noisyDistance):
-    '''
-    emissionModels = {}
-    for ghostIdx in self.enemyIndicies:
-      probList = []
-      for p in self.particles:
-        #TODO: why is each particle a tuple of coordinates?
-        prob = gameState.getDistanceProb(self.getMazeDistance(myPos, p[self.ghostIndexMap[ghostIdx]]), noisyDistances[ghostIdx])
-        probList.append(prob)
-      emissionModels[ghostIdx] = probList
-    #emissionModels = [busters.getObservationDistribution(dist) for dist in noisyDistances]
-    #emissionModels = [gameState.getDistanceProb(dist, util.manhattanDistance(myPos, p)) for p in self.particles]
-    #  emissionModels = [gameState.getObservationDistribution(dist) for dist in noisyDistances]
-
-    newSamples = [None] * self.numParticles
-    weights = [1] * self.numParticles
-    for ghostIdx in self.enemyIndicies:
-      for i in range(self.numParticles):
-        trueDistance = self.getMazeDistance(self.particles[i][self.ghostIndexMap[ghostIdx]], myPos)
-        print trueDistance
-        #print emissionModels[0]
-        weights[i] *= emissionModels[ghostIdx][trueDistance]
-      if sum(weights) == 0:
-        self.initializeParticles()
-        newSamples = self.particles
-      else:
-        beliefs = util.Counter()
-        for i in range(self.numParticles):
-          beliefs[self.particles[i]] += weights[i]
-        beliefs.normalize()
-        for i in range(self.numParticles):
-          newSamples[i] = util.sample(beliefs)
-        self.particles = newSamples
-
-    def elapseTime(self, gameState):
-      newParticles = []
-      for oldParticle in self.particles:
-        newParticle = list(oldParticle) # A list of ghost positions
-        # now loop through and update each entry in newParticle...
-        newParticles.append(tuple(newParticle))
-      self.particles = newParticles
-
-    def getBeliefDistribution(self):
-      beliefs = util.Counter()
-      for poss in self.particles:
-        beliefs[poss] += 1
-        beliefs.normalize()
-      return beliefs
-
-
-    def chooseAction(self, gameState):
-        return None
+      All ghosts should be modeled as choosing uniformly at random from their
+      legal moves.
+    """
+    return None
     # """
     # Picks among the actions with the highest Q(s,a).
     # """
@@ -192,7 +96,6 @@ class MultiAgentSearchAgent(CaptureAgent):
     # # You can profile your evaluation time by uncommenting these lines
     # # start = time.time()
     # values = [self.evaluate(gameState, a) for a in actions]
-    # # print 'eval time for agent %d: %.4f' % (self.index, time.time() - start)
 
     # maxValue = max(values)
     # bestActions = [a for a, v in zip(actions, values) if v == maxValue]
@@ -237,12 +140,9 @@ class MultiAgentSearchAgent(CaptureAgent):
     '''
     closestDist = 6969696969420
     for food in self.ourInitialFoodList:
-      #print food
       dist = self.getMazeDistance(ourPos, food)
       if dist < closestDist:
         closestDist = dist
-        print food
-    #print closestDist
     return closestDist
     '''
     homePos = gameState.getInitialAgentPosition(self.index)
@@ -276,8 +176,6 @@ class MultiAgentSearchAgent(CaptureAgent):
       if (pos != None):
         return pos
       else:
-          beliefs = self.getBeliefDistribution()
-          likelyPosition = max(beliefs.items(), key=lambda x: x[1])
           # particle filter
           return None
       return None
@@ -290,7 +188,6 @@ class AlphaBetaAgent(MultiAgentSearchAgent):
   """
   def chooseAction(self, gameState):
     action = self.minimax(gameState,self.index,0, -10000, 10000, None)[1]
-    print "chose action: ", action, gameState.getAgentState(self.index).getPosition()
     return action
   def minimax(self, gameState, agentIndex, currentDepth, alpha, beta, prevGameState):
       # Function returns a tuple with proper action and value computed by the function
@@ -300,7 +197,6 @@ class AlphaBetaAgent(MultiAgentSearchAgent):
       visibleEnemyIndicies = [a[0] for a in temp if self.getMazeDistance(gameState.getAgentState(self.index).getPosition(), a[1].getPosition()) < 6
       ]
       if(currentDepth == self.depth * gameState.getNumAgents()):
-          # print self.evaluate(gameState, prevGameState), gameState.getAgentState(self.index).getPosition()
           return (self.evaluate(gameState, prevGameState),"")
       if(agentIndex==self.index): #maximizing option
           value = (-100000, "MAX_DEFAULT")
@@ -335,7 +231,6 @@ class ExpectiMaxAgent(MultiAgentSearchAgent):
   """
   def chooseAction(self, gameState):
     action = self.expectimax(gameState,self.index,0, -10000, 10000)[1]
-    # print "ran expectimax " + str(self.count) + "times"
     self.count = 0
     return action
   def expectimax(self, gameState, agentIndex, currentDepth, alpha, beta):
@@ -406,8 +301,6 @@ class AttackRyan(ExpectiMaxAgent):
       dists = [self.getMazeDistance(myPos, a.getPosition()) for a in defenders]
       features['defenderDistance'] = min(dists)
 
-    # print dists
-    # print "======"
     return features
 
   def getWeights(self, gameState):
@@ -423,12 +316,8 @@ class AttackDanica(AlphaBetaAgent):
   def getFeatures(self, gameState, prevGameState):
     features = util.Counter()
     foodList = self.getFood(gameState).asList()
-
-    self.observeState(gameState)
-    self.elapseTime(gameState)
-
-    features['successorScore'] = len(foodList)
-    features['score'] = self.getScore(gameState)
+    features['foodRemaining'] = len(foodList)
+    features['score'] = max(0.1,self.getScore(gameState))
 
     # Compute distance to the nearest food
     myPos = gameState.getAgentState(self.index).getPosition()
@@ -443,7 +332,6 @@ class AttackDanica(AlphaBetaAgent):
     invaders = [a for a in enemies if a.isPacman and self.getEnemyPosition(gameState, a) != None and a.scaredTimer <= 0]
     defenders = [a for a in enemies if not a.isPacman and self.getEnemyPosition(gameState, a) != None and a.scaredTimer <= 0]
     scaredDefenders = [a for a in enemies if not a.isPacman and self.getEnemyPosition(gameState, a) != None and a.scaredTimer > 5]
-    print len(invaders)
     # Min distance to bud
     dists = None
     if len(buds) > 0:
@@ -497,20 +385,119 @@ class ReflexCaptureAgent(CaptureAgent):
   A base class for reflex agents that chooses score-maximizing actions
   """
 
+  def initializeParticles(self, gameState, myIndex, enemyIndicies):
+    self.numParticles = 600
+    self.myIndex = myIndex
+    self.enemyIndicies = enemyIndicies
+    self.ghostIndexMap = {}
+    for i, v in enumerate(enemyIndicies):
+        self.ghostIndexMap[v] = i
+    self.numEnemies = len(enemyIndicies)
+    self.legalPositions = gameState.getWalls().asList(False)
+    self.particles = []
+
+    legalPositions = [self.legalPositions] * self.numEnemies
+    d = list(itertools.product(*legalPositions))
+    random.shuffle(d)
+    numPerPosition = self.numParticles/len(d)
+    remainder = self.numParticles%len(d)
+    for p in d:
+        c = numPerPosition
+        while c is not 0:
+            self.particles.append(p)
+            c -= 1
+    for i in range(remainder):
+        self.particles.append(d[i])
   def registerInitialState(self, gameState):
     self.start = gameState.getAgentPosition(self.index)
+
     CaptureAgent.registerInitialState(self, gameState)
+
+    self.initializeParticles(gameState, self.index, self.getOpponents(gameState))
+
+    self.distancer.getMazeDistances()
+
+  def observeState(self, gameState):
+    myPos = gameState.getAgentState(self.myIndex).getPosition()
+        #pacmanPosition = gameState.getPacmanPosition()
+    noisyDistances = {}
+    for i in self.enemyIndicies:
+      noisyDist = gameState.getAgentDistances()[i]
+      noisyDistances[i] = noisyDist
+            #noisyDistances.append(self.noisyDistance(myPos, gameState.getAgentDistances()[i]))
+    if len(noisyDistances) < self.numEnemies:
+      return
+
+    #for p in self.particles:
+    #    truePartDist = distanceCalculator.manhattanDistance(myPos, p)
+    #trueDist = distanceCalculator.manhattanDistance(myPos, )
+    '''
+    emissionModels = {}
+    for ghostIdx in range in self.particles:
+      for i in range(self.numEnemies):
+        prob = gameState.getDistanceProb(self.getMazeDistance(myPos, p[i]), noisyDistances[i])
+        emissionModels[i] = prob
+        #   def getDistanceProb(self, trueDistance, noisyDistance):
+    '''
+    emissionModels = {}
+    for ghostIdx in self.enemyIndicies:
+      probList = []
+      for p in self.particles:
+        #TODO: why is each particle a tuple of coordinates?
+        prob = gameState.getDistanceProb(self.getMazeDistance(myPos, p[self.ghostIndexMap[ghostIdx]]), noisyDistances[ghostIdx])
+        probList.append(prob)
+      emissionModels[ghostIdx] = probList
+    #emissionModels = [busters.getObservationDistribution(dist) for dist in noisyDistances]
+    #emissionModels = [gameState.getDistanceProb(dist, util.manhattanDistance(myPos, p)) for p in self.particles]
+    #  emissionModels = [gameState.getObservationDistribution(dist) for dist in noisyDistances]
+
+    newSamples = [None] * self.numParticles
+    weights = [1] * self.numParticles
+    for ghostIdx in self.enemyIndicies:
+      for i in range(self.numParticles):
+        trueDistance = self.getMazeDistance(self.particles[i][self.ghostIndexMap[ghostIdx]], myPos)
+  
+  
+        weights[i] *= emissionModels[ghostIdx][trueDistance]
+      if sum(weights) == 0:
+        self.initializeParticles(gameState, self.index, self.enemyIndicies)
+        newSamples = self.particles
+      else:
+        beliefs = util.Counter()
+        for i in range(self.numParticles):
+          beliefs[self.particles[i]] += weights[i]
+        beliefs.normalize()
+        for i in range(self.numParticles):
+          newSamples[i] = util.sample(beliefs)
+        self.particles = newSamples
+
+  def elapseTime(self, gameState):
+    newParticles = []
+    for oldParticle in self.particles:
+      newParticle = list(oldParticle) # A list of ghost positions
+      # now loop through and update each entry in newParticle...
+      newParticles.append(tuple(newParticle))
+    self.particles = newParticles
+
+  def getBeliefDistribution(self):
+    beliefs = util.Counter()
+    for poss in self.particles:
+      beliefs[poss] += 1
+      beliefs.normalize()
+    # self.displayDistributionsOverPositions(beliefs)
+    return beliefs
 
   def chooseAction(self, gameState):
     """
     Picks among the actions with the highest Q(s,a).
     """
     actions = gameState.getLegalActions(self.index)
+    self.observeState(gameState)
+    self.elapseTime(gameState)
 
     # You can profile your evaluation time by uncommenting these lines
     # start = time.time()
     values = [self.evaluate(gameState, a) for a in actions]
-    # print 'eval time for agent %d: %.4f' % (self.index, time.time() - start)
 
     maxValue = max(values)
     bestActions = [a for a, v in zip(actions, values) if v == maxValue]
@@ -565,15 +552,19 @@ class ReflexCaptureAgent(CaptureAgent):
     a counter or a dictionary.
     """
     return {'successorScore': 1.0}
-  def getEnemyPosition(self, gameState, agentState):
+  def getEnemyPosition(self, gameState, agentIndex):
       # if in range, return actual,
-      pos = agentState.getPosition()
+      pos = gameState.getAgentState(agentIndex).getPosition()
       if (pos != None):
         return pos
       else:
+          beliefs = self.getBeliefDistribution()
+          likelyPosition = max(beliefs.items(), key=lambda x: x[1])
           # particle filter
-          return None
+          return likelyPosition[0][self.ghostIndexMap[agentIndex]]
       return None
+
+
 
 class DefenceTaichi(ReflexCaptureAgent):
   """
@@ -595,17 +586,17 @@ class DefenceTaichi(ReflexCaptureAgent):
     if myState.isPacman: features['onDefense']  = 0
 
     # Computes distance to invaders we can see
-    enemies = [successor.getAgentState(i) for i in self.getOpponents(successor)]
-    invaders = [a for a in enemies if a.isPacman and a.getPosition() != None]
+    enemies = self.getOpponents(successor)
+    invaders = [a for a in enemies if successor.getAgentState(a).isPacman]
     features['numInvaders'] = len(invaders)
     if len(invaders) > 0:
-      dists = [self.getMazeDistance(myPos, a.getPosition()) for a in invaders]
+      dists = [self.getMazeDistance(myPos, self.getEnemyPosition(gameState, a)) for a in invaders]
       features['invaderDistance'] = min(dists)
 
     if action == Directions.STOP: features['stop'] = 1
     rev = Directions.REVERSE[gameState.getAgentState(self.index).configuration.direction]
     if action == rev: features['reverse'] = 1
-    scaredDefenders = [a for a in enemies if not a.isPacman and self.getEnemyPosition(gameState, a) != None and a.scaredTimer > 5]
+
     # Min distance to scared defender
     features['amIScared'] = myState.scaredTimer
     return features
